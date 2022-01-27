@@ -1,0 +1,27 @@
+name: alaska-ml
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - black
+  - cartopy
+  - geopandas
+  - h5py
+  - dask
+  - ipykernel
+  - ipyleaflet
+  - isort
+  - jupyterlab_code_formatter  
+  # https://github.com/obspy/obspy/issues/2912
+  - numpy==1.21
+  - obspy
+  - obsplus
+  - pip
+  - pyarrow
+  # NOTE: 'pytorch' will by default install huge GPU libraries
+  - pytorch=1.10.0=cpu_py39hc5866cc_0
+  - scipy
+  - requests
+  - zarr
+  - pip:
+    - seisbench
