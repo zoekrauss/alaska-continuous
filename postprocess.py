@@ -18,7 +18,7 @@ def extract_picks(preds, fnames=None, station_ids=None, t0=None, config=None):
 
     picks = []
     for i, pred in enumerate(preds):
-
+        
         if config is None:
             mph_p, mph_s, mpd = 0.3, 0.3, 50
         else:

@@ -94,19 +94,6 @@ def retrieve_waveforms(dfS,t1,t2,sampling_rate=100):
     
     return st
     
-@dask.delayed
-def dask_waveforms(dfS,t1,step):
-    """
-    Function written to loop over a call to retrieve waveforms in parallel using dask
-    
-    Calls to retrieve_waveforms function by looping over time
-    
-    INPUTS:
-    dfS = pandas dataframe of station list
-    t1 = initial time in loop, 
-    """
-    return retrieve_waveforms(dfS,t1,t1+pd.Timedelta(step,'seconds'))
-
 
 
 
