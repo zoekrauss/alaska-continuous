@@ -74,11 +74,11 @@ def retrieve_waveforms(dfS,t1,t2,sampling_rate=100):
     st = client.get_waveforms_bulk(bulk_order)
     
     # Detrend all traces:
-    try:
-        st = st.detrend("spline", order=2, dspline=5 * st[0].stats.sampling_rate)
-    except:
+    # try:
+        # st = st.detrend("spline", order=2, dspline=5 * st[0].stats.sampling_rate)
+    # except:
         # logging.error(f"Error: spline detrend failed at file {fname}")
-        st = st.detrend("demean")
+        # st = st.detrend("demean")
     
     # Make sure all traces are the same length by padding with zeros:
     st = st.merge(fill_value=0)
