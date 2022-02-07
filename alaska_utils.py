@@ -45,7 +45,7 @@ def station_list(dfS,t1,t2,elevation=False,network=False):
     
     
 
-def retrieve_waveforms(dfS,t1,t2,sampling_rate=100):
+def retrieve_waveforms(dfS,t1,t2,sampling_rate=100,separate=False):
     """
     Function to retrieve seismic time series using obspy get bulk waveforms function
     Also detrends, trims, and normalizes sampling rate for all traces
@@ -56,6 +56,7 @@ def retrieve_waveforms(dfS,t1,t2,sampling_rate=100):
     t1 = start time of desired time series, as datetime
     t2 = end time of desired time series, as datetime
     sampling_rate = sampling rate in Hz to normalize all downloaded time series to
+    separate = bool, to separate into a list of streams for each station rather than returning one large stream
     
     OUTPUTS:
     st = obspy Stream object containing traces for each station in dfS for the desired time window
@@ -89,8 +90,52 @@ def retrieve_waveforms(dfS,t1,t2,sampling_rate=100):
         if st[i].stats.sampling_rate != sampling_rate:
             st[i] = st[i].interpolate(sampling_rate, method="linear")
             
+    if separate:
+        # Separate the large stream into a list of streams, one for each instrument
+        # This helps keep track of stations which have multiple channel sets for one station code,
+        # which gets lost in seisbench
+        sta=[];chn=[];stt=[];
+        for tr in st:
+            sta.append(tr.stats.station)
+            chn.append(tr.stats.channel[0:2])
+        st_meta = pd.DataFrame.from_dict({'sta':sta,'chn':chn})
+        st_meta.drop_duplicates(inplace=True,ignore_index=True)
+        stream2 = np.empty([len(st_meta)],dtype=object)
+        for i in range(len(st_meta)):
+            tmp = st.select(station=st_meta.iloc[i].sta,channel=st_meta.iloc[i].chn+'*')
+            stream2[i] = tmp
+        st = stream2
 
+    
+    return st
 
+def retrieve_waveforms_raw(dfS,t1,t2,sampling_rate=100):
+    """
+    Function to retrieve seismic time series using obspy get bulk waveforms function
+    
+    
+    INPUTS:
+    dfS = pandas dataframe of station information (made using station_list)
+    t1 = start time of desired time series, as datetime
+    t2 = end time of desired time series, as datetime
+    sampling_rate = sampling rate in Hz to normalize all downloaded time series to
+    
+    OUTPUTS:
+    st = obspy Stream object containing traces for each station in dfS for the desired time window
+    """
+
+    client = Client("iris")
+    
+    df = dfS.loc[:,['network','station']]
+    df['location']='*'
+    df['channels']=dfS.id.str[-2:]+'*'
+    df['start']=obspy.UTCDateTime(t1)
+    df['end']=obspy.UTCDateTime(t2)
+
+    bulk_order = df.to_records(index=False).tolist()
+    
+    st = client.get_waveforms_bulk(bulk_order)
+            
     
     return st
     
