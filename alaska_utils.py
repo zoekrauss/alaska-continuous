@@ -282,72 +282,7 @@ def pick_quakeflow(st,dfS,remove_resp=False):
 def loop_phasenet(stream,sub):
     return pick_quakeflow(stream,sub,remove_resp=True)
 
-def extract_gamma(stream,annotation):
-    """
-    Takes in a list of streams with a corresponding list of EQTransformer-annotated streams
-    Extracts and saves picks in a list of dictionaries that are GAMMA-compatible
 
-
-
-    """
-    preds = np.empty([1,6000,1,3])
-    dat = np.empty([1,6000,1,3])
-    station_ids = []
-    t0 = []
-    match_idx = []
-    for i in range(int(len(annotation))):
-
-        # For empty annotations:
-        if not annotation[i]:
-            continue
-
-        # For short traces:
-        if annotation[i][0].stats.npts < preds.shape[1]:
-            preds[0,:,0,0] = np.append(annotation[i][0].data,[0])
-            preds[0,:,0,1] = np.append(annotation[i][1].data,[0])
-            preds[0,:,0,2] = np.append(annotation[i][2].data,[0])
-        # For traces of correct length:
-        else:
-            preds[0,:,0,0] = annotation[i][0].data
-            preds[0,:,0,1] = annotation[i][1].data
-            preds[0,:,0,2] = annotation[i][2].data
-
-        station_id = annotation[i][0].stats.network + '..' + annotation[i][0].stats.station + '.'
-        final_id = stream[i][0].stats.network + '.' + stream[i][0].stats.station + '..' + stream[i][0].stats.channel[0:2]
-        station_ids.append(station_id)
-        t0.append(str(annotation[i][0].stats.starttime))
-
-
-        picks = postprocess.extract_picks(preds,station_ids = [station_id],fnames = [station_id],t0=[str(annotation[i][0].stats.starttime)])
-
-        # TO-DO: now call to original data using the same i index to get amplitudes
-
-        dat[0,:,0,0] = stream[i].select(channel="**Z")[0].data[0:6000]
-        if stream[i].select(channel="**N"):
-            dat[0,:,0,1] = stream[i].select(channel="**N")[0].data[0:6000]
-            dat[0,:,0,2] = stream[i].select(channel="**E")[0].data[0:6000]
-        else:
-            dat[0,:,0,1] = stream[i].select(channel="**1")[0].data[0:6000]
-            dat[0,:,0,2] = stream[i].select(channel="**2")[0].data[0:6000]
-        amps = postprocess.extract_amplitude(dat,picks)
-
-        # Then, if the pick isn't empty, make a GAMMA-style pick dictionary and save that!
-        if picks[0].p_prob[0]:
-            for j in range(len(picks[0].p_prob[0])):
-                # Get timestamp of pick:
-                ts = annotation[i][0].stats.starttime + (pd.Timedelta(1,'seconds')*annotation[i][0].stats.delta*picks[0].p_idx[0][j])
-                # Save all info in dictionary:
-                pdict = {'id':final_id,'timestamp':ts,'prob':picks[0].p_prob[0][j],'amp':amps[0].p_amp[0][j],'type':'P'}
-                gamma_picks.append(pdict)
-        if picks[0].s_prob[0]:
-            for j in range(len(picks[0].s_prob[0])):
-                # Get timestamp of pick:
-                ts = annotation[i][0].stats.starttime + (pd.Timedelta(1,'seconds')*annotation[i] [0].stats.delta*picks[0].s_idx[0][j])
-                # Save all info in dictionary:
-                sdict = {'id':final_id,'timestamp':ts,'prob':picks[0].s_prob[0][j],'amp':amps[0].s_amp[0][j],'type':'S'}
-                gamma_picks.append(sdict)
-                
-        return(gamma_picks)
     
 def calc_snr(trace,sampleind,phase):
     # Calculate SNR of arrival
