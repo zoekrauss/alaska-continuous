@@ -14,10 +14,6 @@ import dask
 import json
 import postprocess
 
-# Progress bar for dask operations:
-from dask.diagnostics import ProgressBar
-pbar = dask.diagnostics.ProgressBar()
-pbar.register()
 
 def station_list(dfS,t1,t2,elevation=False,network=False):
     """ 
@@ -286,14 +282,14 @@ def pick_quakeflow(st,dfS,remove_resp=False):
 def loop_phasenet(stream,sub):
     return pick_quakeflow(stream,sub,remove_resp=True)
 
-def extract_gamma(stream,annotation)
-"""
-Takes in a list of streams with a corresponding list of EQTransformer-annotated streams
-Extracts and saves picks in a list of dictionaries that are GAMMA-compatible
+def extract_gamma(stream,annotation):
+    """
+    Takes in a list of streams with a corresponding list of EQTransformer-annotated streams
+    Extracts and saves picks in a list of dictionaries that are GAMMA-compatible
 
 
 
-"""
+    """
     preds = np.empty([1,6000,1,3])
     dat = np.empty([1,6000,1,3])
     station_ids = []
@@ -352,3 +348,27 @@ Extracts and saves picks in a list of dictionaries that are GAMMA-compatible
                 gamma_picks.append(sdict)
                 
         return(gamma_picks)
+    
+def calc_snr(trace,sampleind,phase):
+    # Calculate SNR of arrival
+    # INPUTS:
+    # trace = obspy-formatted trace object
+    # sampleind = index in the trace's data of desired arrival for which to calculate SNR
+    # phase = type of arrival as a string, either 'P' or 'S'
+    #
+    # OUTPUT:
+    # snr = float object of calculated SNR for the input index
+    
+    if phase == 'P':
+        window = [5,5] # in seconds
+    if phase == 'S':
+        window = [5,5]
+    try:
+        data = trace.data
+        sr = int(trace.stats.sampling_rate)
+        snr_num = max(abs(data[sampleind:(sampleind+(window[0]*sr))]))
+        snr_denom = np.sqrt(np.mean((data[(sampleind-(window[1]*sr)):sampleind])**2))
+        snr = snr_num/snr_denom
+    except:
+        snr = float('NaN')
+    return(snr)
