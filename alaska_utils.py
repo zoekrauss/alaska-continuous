@@ -82,7 +82,7 @@ def retrieve_waveforms(dfS,t1,t2,sampling_rate=100,separate=False):
     st = st.merge(fill_value=0)
     st = st.trim(obspy.UTCDateTime(t1),obspy.UTCDateTime(t2), pad=True, fill_value=0)
     
-        # Double check that everything is the same sampling rate:
+    # Double check that everything is the same sampling rate:
     for i in range(len(st)):
         if st[i].stats.sampling_rate != sampling_rate:
             st[i] = st[i].interpolate(sampling_rate, method="linear")
@@ -278,10 +278,6 @@ def pick_quakeflow(st,dfS,remove_resp=False):
     return phasenet_picks
 
     
-@dask.delayed
-def loop_phasenet(stream,sub):
-    return pick_quakeflow(stream,sub,remove_resp=True)
-
 
     
 def calc_snr(trace,sampleind,phase):
