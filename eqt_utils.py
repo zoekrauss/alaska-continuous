@@ -38,25 +38,34 @@ def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=Fal
     """
     
     # Convert to pandas datetime
-    dfS['start_date']=pd.to_datetime(dfS['start_date'],infer_datetime_format=True,errors='coerce')
-    dfS['end_date']=pd.to_datetime(dfS['end_date'],infer_datetime_format=True,errors='coerce')
+    # dfS['start_date']=pd.to_datetime(dfS['start_date'],infer_datetime_format=True,errors='coerce')
+    # dfS['end_date']=pd.to_datetime(dfS['end_date'],infer_datetime_format=True,errors='coerce')
 
     # Download waveforms
-    time_bins = pd.to_datetime(np.arange(t1,t2,pd.Timedelta(waveform_length-waveform_overlap,'seconds')))
+    # time_bins = pd.to_datetime(np.arange(t1,t2,pd.Timedelta(waveform_length-waveform_overlap,'seconds')))
     
-    print('Downloading data from IRIS:')
+    # print('Downloading data from IRIS:')
     
-    @dask.delayed
-    def loop_times(dfS,t1,waveform_length):
-        return alaska_utils.retrieve_waveforms(dfS,t1,t1+pd.Timedelta(waveform_length,'seconds'),separate=True)
+    # @dask.delayed
+    # def loop_times(dfS,t1,waveform_length):
+    #    return alaska_utils.retrieve_waveforms(dfS,t1,t1+pd.Timedelta(waveform_length,'seconds'),separate=True)
+    
 
-    lazy_results = [loop_times(dfS,time,waveform_length) for time in time_bins]
     
-    results = dask.compute(lazy_results)
+    stream = alaska_utils.retrieve_waveforms(dfS,t1,t2,separate=True)
+    
+
+    #stream = []
+    #for t in [results]:
+    #    stream.extend(t)
+    
+
+
+    # lazy_results = [loop_times(dfS,time,waveform_length) for time in time_bins]
+    
+    # results = dask.compute(lazy_results)
     # Concat into big list of streams
-    test = sum(results,[]); stream = []
-    for t in test:
-        stream.extend(t)
+    # test = sum(results,[]); 
     
 
     # Filter waveforms as specified, then apply EQTransformer
