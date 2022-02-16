@@ -15,6 +15,9 @@ import json
 import alaska_utils
 import postprocess
 
+import warnings
+warnings.filterwarnings('ignore')
+
 
 def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=False):
     """
@@ -38,34 +41,28 @@ def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=Fal
     """
     
     # Convert to pandas datetime
-    # dfS['start_date']=pd.to_datetime(dfS['start_date'],infer_datetime_format=True,errors='coerce')
-    # dfS['end_date']=pd.to_datetime(dfS['end_date'],infer_datetime_format=True,errors='coerce')
+    dfS['start_date']=pd.to_datetime(dfS['start_date'],infer_datetime_format=True,errors='coerce')
+    dfS['end_date']=pd.to_datetime(dfS['end_date'],infer_datetime_format=True,errors='coerce')
 
     # Download waveforms
-    # time_bins = pd.to_datetime(np.arange(t1,t2,pd.Timedelta(waveform_length-waveform_overlap,'seconds')))
+    time_bins = pd.to_datetime(np.arange(t1,t2,pd.Timedelta(waveform_length-waveform_overlap,'seconds')))
     
-    # print('Downloading data from IRIS:')
+    print('Downloading data from IRIS:')
     
-    # @dask.delayed
-    # def loop_times(dfS,t1,waveform_length):
-    #    return alaska_utils.retrieve_waveforms(dfS,t1,t1+pd.Timedelta(waveform_length,'seconds'),separate=True)
-    
-
-    
-    stream = alaska_utils.retrieve_waveforms(dfS,t1,t2,separate=True)
-    
-
-    #stream = []
-    #for t in [results]:
-    #    stream.extend(t)
-    
+    @dask.delayed
+    def loop_times(dfS,t1,waveform_length):
+        return alaska_utils.retrieve_waveforms(dfS,t1,t1+pd.Timedelta(waveform_length,'seconds'),separate=True)
 
 
-    # lazy_results = [loop_times(dfS,time,waveform_length) for time in time_bins]
+    lazy_results = [loop_times(dfS,time,waveform_length) for time in time_bins]
     
-    # results = dask.compute(lazy_results)
+    results = dask.compute(lazy_results)
+    
     # Concat into big list of streams
-    # test = sum(results,[]); 
+    test = sum(results,[])
+    stream = []
+    for t in test:
+        stream.extend(t)
     
 
     # Filter waveforms as specified, then apply EQTransformer
@@ -85,7 +82,10 @@ def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=Fal
         print('Status: applying EQTransformer')
         annotation = apply_eqt(denoised)
         pick_info = get_picks(stream,annotation,filt_type,denoise=denoised)
-        
+    
+    # Convert to string to save as parquet:
+    pick_info['timestamp']= [p.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] for p in pick_info['timestamp']]
+    
     gamma_picks = convert_to_gamma(pick_info)  
     
     return pick_info,gamma_picks
@@ -105,6 +105,7 @@ def denoise_waveforms(stream):
     
     # Apply DeepDenoiser model
     denoise = np.empty([len(stream)],dtype=object)
+    model.cuda()
     for i,st in enumerate(stream):
         den = model.annotate(st)
         denoise[i]=den
@@ -144,6 +145,7 @@ def apply_eqt(stream):
     # EDIT MODEL TO NOT CUT SAMPLES OFF 
     model.default_args["blinding"] = (0,0)
 
+    model.cuda()
     annotation = np.empty([len(stream)],dtype=object)
     for i,st in enumerate(stream):
         at = model.annotate(st)
