@@ -89,6 +89,7 @@ def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=Fal
     gamma_picks = convert_to_gamma(pick_info)  
     
     return pick_info,gamma_picks
+    # return stream,annotation,denoised
 
 def denoise_waveforms(stream):
     """
@@ -172,6 +173,7 @@ def get_picks(stream,annotation,filt_type,denoise=False):
         if not annotation[i]:
             continue
 
+        annotation[i] = check_traces(annotation[i])
         preds = np.empty([1,annotation[i][0].stats.npts,1,3])
         preds[0,:,0,0] = annotation[i][0].data
         preds[0,:,0,1] = annotation[i][1].data
@@ -185,6 +187,7 @@ def get_picks(stream,annotation,filt_type,denoise=False):
         # now call to original data using the same i index to get amplitudes
 
         # Raw amplitudes
+        stream[i] = check_traces(stream[i])
         raw = np.empty([1,stream[i][0].stats.npts,1,3])
         raw[0,:,0,0] = stream[i].select(channel="**Z")[0].data
         if stream[i].select(channel="**N"):
@@ -197,7 +200,7 @@ def get_picks(stream,annotation,filt_type,denoise=False):
 
         # Denoised amplitudes (if applicable)
         if filt_type!=0:
- 
+            denoise[i] = check_traces(denoise[i])
             dat = np.empty([1,denoise[i][0].stats.npts,1,3])
             dat[0,:,0,0] = denoise[i].select(channel="**Z")[0].data
             if stream[i].select(channel="**N"):
@@ -282,7 +285,7 @@ def convert_to_gamma(pick_df):
     gamma_picks = []
     for i in range(len(pick_df)):
         p = pick_df.iloc[i]
-        gamma_dict = {'id':p['id'],'timestamp':str(p['timestamp']),'prob':p['prob'],'amp':p['raw_amp'],'type':p['phase']}
+        gamma_dict = {'amp':p['raw_amp'],'id':p['id'],'prob':p['prob'],'timestamp':str(p['timestamp']),'type':p['phase'].lower()}
         gamma_picks.append(gamma_dict)
     return gamma_picks
 
@@ -310,3 +313,29 @@ def calc_snr(trace,sampleind,phase):
     except:
         snr = float('NaN')
     return(snr)
+
+def check_traces(stre):
+    """
+    Reads in a 3-component stream and checks to see if all traces are the same length
+    If not, cuts all traces to minimum length
+    """
+
+    npts1 = stre[0].stats.npts
+    npts2 = stre[1].stats.npts
+    npts3 = stre[2].stats.npts
+    
+    if npts1==npts2 & npts2==npts3:
+        return stre
+    
+    else:
+        stre_edit = stre.copy()
+        npts_cut = np.min([npts1,npts2,npts3])
+        stre_edit[0].data = stre_edit[0].data[0:npts_cut]
+        stre_edit[1].data = stre_edit[1].data[0:npts_cut]
+        stre_edit[2].data = stre_edit[2].data[0:npts_cut]
+        return stre_edit
+        
+        
+    
+    
+    

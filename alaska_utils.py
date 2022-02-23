@@ -28,6 +28,10 @@ def station_list(dfS,t1,t2,elevation=False,network=False):
     OUTPUTS:
     dfS = subset of the original pandas station dataframe that meets specifications
     """
+    if isinstance(dfS.iloc[0]['start_date'],str):
+        dfS['start_date'] = pd.to_datetime(dfS['start_date'],infer_datetime_format=True,errors='coerce')
+        dfS['end_date'] = pd.to_datetime(dfS['end_date'],infer_datetime_format=True,errors='coerce')
+
     
     dfS = dfS[(dfS['start_date'] < t1) & (dfS['end_date'] > t2)]
     
