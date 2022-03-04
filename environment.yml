@@ -21,6 +21,7 @@ dependencies:
   - pyarrow
   # NOTE: 'pytorch' will by default install huge GPU libraries
   # - pytorch=1.10.0=cpu_py39hc5866cc_0
+  - pytorch-gpu
   - scipy
   - requests
   - zarr
