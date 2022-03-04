@@ -28,8 +28,8 @@ warnings.filterwarnings("ignore")
 
 waveform_length = 60
 waveform_overlap = 0
-starttime = datetime.datetime(2019, 5, 27)
-endtime = datetime.datetime(2019, 5, 27,12)
+starttime = datetime.datetime(2018, 8, 6,18)
+endtime = datetime.datetime(2019, 8, 7)
 
 # Pre=saved station list in pandas dataframe format
 dfS = pd.read_parquet(
@@ -45,4 +45,4 @@ pick_info,gamma_picks = eqt_utils.ml_pick(
     dfS, starttime, endtime, waveform_length, waveform_overlap, filt_type, f1=f1, f2=f2
 )
 
-pick_info.to_parquet("picks_20190527_bp0535.parquet", version="2.6")
+pick_info.to_parquet("picks_20180806_bp0535.parquet", version="2.6")
