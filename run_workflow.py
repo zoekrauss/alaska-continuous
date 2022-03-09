@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore")
 waveform_length = 60
 waveform_overlap = 0
 starttime = datetime.datetime(2018, 8, 6,18)
-endtime = datetime.datetime(2019, 8, 7)
+endtime = datetime.datetime(2018, 8, 7)
 
 # Pre=saved station list in pandas dataframe format
 dfS = pd.read_parquet(
