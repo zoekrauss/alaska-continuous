@@ -18,6 +18,9 @@ import postprocess
 import warnings
 warnings.filterwarnings('ignore')
 
+import torch
+torch.set_num_threads(1)
+
 
 def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=False):
     """
@@ -140,6 +143,7 @@ def apply_eqt(stream):
     annotation - list of obspy streams, each an annotated version of the input stream
     
     """
+
     # Load model
     model = sbm.EQTransformer.from_pretrained("original")
     # EDIT MODEL TO NOT CUT SAMPLES OFF 
@@ -147,6 +151,7 @@ def apply_eqt(stream):
 
     model.cuda()
     annotation = np.empty([len(stream)],dtype=object)
+
     for i,st in enumerate(stream):
         at = model.annotate(st)
         annotation[i]=at; 
