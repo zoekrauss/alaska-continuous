@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore")
 waveform_length = 60
 waveform_overlap = 0
 starttime = datetime.datetime(2019, 5, 27)
-endtime = datetime.datetime(2019, 5, 28)
+endtime = datetime.datetime(2019, 5, 31)
 
 # Pre=saved station list in pandas dataframe format
 dfS = pd.read_parquet(
@@ -39,7 +39,7 @@ dfS = alaska_utils.station_list(dfS,starttime,endtime,elevation=False,network=Fa
 
 filt_type = 1
 f1 = 5
-f2 = 35
+f2 = 20
 
 pick_info,gamma_picks = eqt_utils.ml_pick(
     dfS, starttime, endtime, waveform_length, waveform_overlap, filt_type, f1=f1, f2=f2
