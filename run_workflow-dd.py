@@ -27,7 +27,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 waveform_length = 60
-waveform_overlap = 0
+waveform_overlap = 30
 starttime = datetime.datetime(2019, 5, 27)
 endtime = datetime.datetime(2019, 5, 28)
 
@@ -45,4 +45,4 @@ pick_info,gamma_picks = eqt_utils.ml_pick(
     dfS, starttime, endtime, waveform_length, waveform_overlap, filt_type, f1=f1, f2=f2
 )
 
-pick_info.to_parquet("/home/adminuser/lynx/picks_20190527_dd.parquet", version="2.6")
+pick_info.to_parquet("/home/adminuser/lynx/picks_20190527_dd_overlapped.parquet", version="2.6")
