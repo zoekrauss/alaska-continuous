@@ -88,6 +88,9 @@ def ml_pick(dfS,t1,t2,waveform_length,waveform_overlap,filt_type,f1=False,f2=Fal
     
     # Convert to string to save as parquet:
     pick_info['timestamp']= [p.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] for p in pick_info['timestamp']]
+    # For the case of overlapping windows:
+    pick_info = remove_duplicates(pick_info)
+    pick_info['timestamp']= [p.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] for p in pick_info['timestamp']]
     
     gamma_picks = convert_to_gamma(pick_info)  
     
@@ -338,3 +341,123 @@ def check_traces(stre):
         stre_edit[1].data = stre_edit[1].data[0:npts_cut]
         stre_edit[2].data = stre_edit[2].data[0:npts_cut]
         return stre_edit
+    
+def remove_duplicates(df):
+    """
+    For use when time windows have overlaps
+    
+    Removes duplicate picks that occur on the same station within several seconds of each other
+    Keeps the pick with higher probability
+    
+    Input: pandas dataframe in the format output from the get_picks function
+    
+    Output: same dataframe but with duplicates dropped
+    """
+    df['timestamp']=pd.to_datetime(df['timestamp'],infer_datetime_format=True)
+    df = df.sort_values(by=['timestamp']).reset_index()
+    
+    # Find duplicates of id and phase:
+    df['dupes'] = df.duplicated(subset=['id','phase'])
+
+    to_drop=[]
+    # Loop through and get which repeated times should be dropped:
+    for i,bol in enumerate(df['dupes']):
+        if bol:
+            row = df.iloc[i]
+            diffs = row['timestamp']-df['timestamp']
+            time_dupes = df[(np.abs(diffs)<pd.Timedelta(3,'second')) & (df['id']==row['id']) & (df['phase']==row['phase'])]
+
+            # Check for time duplicates and drop the one with lower probability
+            if len(time_dupes)>1:
+                to_drop.append(time_dupes['prob'].idxmin())
+
+    df = df.drop(index=to_drop)
+    df.reset_index(inplace=True)
+    
+    return(df)
+
+
+
+
+def merge_true(df,resid_max):
+    """
+    Compares pandas dataframe of ML picks to original AK catalog using a time residual threshold in seconds
+    
+    Returns a new dataframe with true picks merged
+    """
+    
+    # Load master pick and event lists
+    ground_truth = pd.read_parquet('https://github.com/zoekrauss/alaska_catalog/raw/main/data_acquisition/alaska_picks.parquet')
+    events = pd.read_parquet('https://github.com/zoekrauss/alaska_catalog/raw/main/data_acquisition/alaska_events.parquet')
+    ground_truth['og_timestamp']=pd.to_datetime(ground_truth['og_timestamp'],format='%Y-%m-%dT%H:%M:%S.%fZ',errors='coerce')
+    events['time']=pd.to_datetime(events['time'],format='%Y-%m-%dT%H:%M:%S.%fZ',errors='coerce')
+    
+
+    # Let's only compare the part of the original catalog that we have EQT picks for:
+    cat_start = min(df['timestamp'] - pd.Timedelta(30,'seconds'))
+    cat_end = max(df['timestamp'] + pd.Timedelta(30,'seconds'))
+    ground_truth = ground_truth[(ground_truth['og_timestamp'] > cat_start) & (ground_truth['og_timestamp'] < cat_end)]
+    # Also only compare picks on stations that are in our station list:
+    ground_truth = ground_truth[([t in df['id'].to_list() for t in ground_truth['sta_code']])]
+
+    # Sort both dataframes by time:
+    df.sort_values(by=['timestamp'],inplace=True)
+    ground_truth.sort_values(by=['og_timestamp'],inplace=True)
+
+    # Merge dataframes, only merging picks if they have matching station ID, phase type, and are within 0.1 s of each other
+    comp = pd.merge_asof(left=df,right=ground_truth,left_on=['timestamp'],right_on=['og_timestamp'],left_by=['id','type'],right_by=['sta_code','og_phase'],tolerance = pd.Timedelta(resid_max,'seconds'),direction='nearest')
+
+    # Add residual column: 
+    comp['pick_resid'] = comp['og_timestamp'] - comp['timestamp']
+    comp['pick_resid'] = comp['pick_resid'].dt.total_seconds()
+    
+    return comp
+
+
+
+
+
+
+def plot_probscatter(df,comp):
+    """
+    Reads in dataframe of EQTransformer picks and its companion comparative dataframe from merge_true()
+    
+    Plots scatter plot of picks throughout time in comparison to their probability
+    """
+    
+    
+    
+    # Load master pick and event lists
+    ground_truth = pd.read_parquet('https://github.com/zoekrauss/alaska_catalog/raw/main/data_acquisition/alaska_picks.parquet')
+    events = pd.read_parquet('https://github.com/zoekrauss/alaska_catalog/raw/main/data_acquisition/alaska_events.parquet')
+    ground_truth['og_timestamp']=pd.to_datetime(ground_truth['og_timestamp'],format='%Y-%m-%dT%H:%M:%S.%fZ',errors='coerce')
+    events['time']=pd.to_datetime(events['time'],format='%Y-%m-%dT%H:%M:%S.%fZ',errors='coerce')
+    
+
+    # Let's only compare the part of the original catalog that we have EQT picks for:
+    cat_start = min(df['timestamp'] - pd.Timedelta(30,'seconds'))
+    cat_end = max(df['timestamp'] + pd.Timedelta(30,'seconds'))
+    ground_truth = ground_truth[(ground_truth['og_timestamp'] > cat_start) & (ground_truth['og_timestamp'] < cat_end)]
+    events = events[(events['time'] > cat_start) & (events['time'] < cat_end)]
+    events = events.sort_values(by=['time'])
+    # Also only compare picks on stations that are in our station list:
+    ground_truth = ground_truth[([t in df['id'].to_list() for t in ground_truth['sta_code']])]
+
+    
+    true_positives = comp[comp['og_timestamp'].notna()]
+
+
+    # Filter by probability?
+    
+    fig = plt.figure(figsize=(20,5))
+    ax = fig.add_subplot(1, 1, 1)
+
+    ax.scatter(df['timestamp'],df['prob'])
+    ax.scatter(ground_truth['og_timestamp'],np.full(np.shape(ground_truth['og_timestamp']),0.5))
+    ax.scatter(true_positives['timestamp'],true_positives['prob'])
+    ax.vlines(x=events['time'],ymin=0,ymax=1,colors ='r')
+    ax.set_xlabel('time')
+    ax.set_ylabel('pick probability')
+    ax.legend(['EQT Picks','True Picks','Matched Picks','Earthquakes'])
+    
+    return fig,ax
